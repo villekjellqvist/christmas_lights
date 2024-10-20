@@ -2,6 +2,8 @@ var can = document.getElementById("live_view")
 width = can.getAttribute("width")
 height = can.getAttribute("height")
 var ctx = can.getContext("2d");
+ctx.fillStyle = "gray"
+ctx.fillRect(0,0,width,height)
 
 const nrpixels = 50
 
@@ -39,5 +41,3 @@ async function updatePixels() {
 }
 
 setInterval(updatePixels, 20)
-
-updatePixels()

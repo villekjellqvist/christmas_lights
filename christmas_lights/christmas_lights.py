@@ -1,37 +1,39 @@
 import threading
-from time import sleep
-from christmas_lights.utils import ScriptImporter
+import time
+from christmas_lights.utils import ScriptImporter, TimeKeeper
 import numpy as np
+
+UPDATETIME = 0.02
 
 class LightsRunner(threading.Thread):
     def __init__(self):
         super().__init__()
-        self.palette = []
+        self.pixels = []
         self.lock = threading.Lock()
         self._stop_event = threading.Event()
+        self.timeKeeper = TimeKeeper()
 
         self.scriptImporter = ScriptImporter()
         self.scriptImporter.findscripts()
-        self.scriptImporter.setCurrentScript(self.scriptImporter.scripts[0])
+        self.scriptImporter.currentScriptIndex = 0
 
     def stopped(self) -> bool:
         return self._stop_event.is_set()
 
     def run(self):
         while not self.stopped():
+            pixels = self.timeKeeper.runFunc(
+                    UPDATETIME, self.scriptImporter.updateFunc
+                )
             with self.lock:
-                self.palette = self.scriptImporter.updateFunc()
-            sleep(0.02)
+                self.pixels = pixels
 
     def stop(self):
         self._stop_event.set()
-        self.palette = np.zeros_like(self.palette).tolist()
+        self.pixels = np.zeros_like(self.pixels).tolist()
         print("Thread is stopped")
-        
 
     def getPixels(self):
-        if self.stopped():
-            return
         with self.lock:
-            ret = self.palette
+            ret = self.pixels
         return ret

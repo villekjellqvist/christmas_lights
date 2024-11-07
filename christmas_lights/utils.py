@@ -1,24 +1,77 @@
 import importlib
 import os
+import sys
 import time
 import typing
+import numpy as np
+
+class AbstractPattern:
+    def __init__(self, pixels_array):
+        self.pixels = pixels_array
+        self.nrpixels = self.pixels.shape[0]
+
+    def start(self):
+        pass
+    
+    def update(self):
+        raise NotImplementedError
+
+    def fade(val:float):
+        self.pixels = self.pixels*val
+        
+def rgb(array):
+    ret = []
+    for p in array:
+        r = int(p[0])
+        g = int(p[1])
+        b = int(p[2])
+        ret.append(f"rgb({r},{g},{b})")
+    return ret
+
+def sendToGPIO(pixels, SA):
+    while np.allclose(SA[0], 1):
+        time.sleep(0.001)
+    SA[1:] = pixels
+    SA[0,:] = 1
+    
+class DaemonPid:
+    def __init__(self, pidfile):
+        self.pidfile = pidfile
+        self.pid = str(os.getpid())
+        if os.path.isfile(self.pidfile):
+            print("PID file exists. Deleting...")
+            os.remove(self.pidfile)
+        with open(self.pidfile, mode='w') as file:
+            file.write(self.pid)
+            print("Successfully written PID file")
+    
+    def closeFile(self):
+        os.remove(self.pidfile)
+
 
 class TimeKeeper:
-    latest = time.time()
+    def __init__(self, interval:int):
+        self.interval = interval
+        self.latest = int((time.time_ns() // 1e9) * 1000)
 
-    def runFunc(self, interval:float, func:typing.Callable, *args):
-        ret = func(*args)
-        funcEnd = time.time()
-        time.sleep(max(interval - (funcEnd - self.latest),0))
-        self.latest = time.time()
-        return ret
+    def _time_ms(self):
+        return int(time.time_ns() // 1e6)
+
+    def wait(self):
+        sleeptime = (self.interval + self.latest - self._time_ms())/1000
+        time.sleep(max(sleeptime,0))
+        self.latest = self._time_ms()
 
 class ScriptImporter:
+    patternMaker:AbstractPattern
     patternsFolder = "christmas_lights/patterns"
     scripts = []
     currentScript = ""
     _currentScriptIndex = 0
     updateFunc = None
+
+    def __init__(self, pixels_array):
+        self.pixels_array = pixels_array
 
     @property
     def currentScriptIndex(self):
@@ -49,7 +102,9 @@ class ScriptImporter:
         scriptmodulepath = scriptpath.replace('/','.').replace('.py','')
         try:
             scriptmodule = importlib.import_module(scriptmodulepath)
-            self.updateFunc = scriptmodule.update
+            self.patternMaker = scriptmodule.Pattern(self.pixels_array)
+            self.patternMaker.start()
+            self.updateFunc = self.patternMaker.update
             del scriptmodule
         except ImportError:
             ImportError(f"Error importing file {script}")

@@ -2,10 +2,12 @@ var can = document.getElementById("live_view")
 width = can.getAttribute("width")
 height = can.getAttribute("height")
 var ctx = can.getContext("2d");
-// ctx.fillStyle = "gray"
-// ctx.fillRect(0,0,width,height)
+ctx.fillStyle = "gray"
+ctx.fillRect(0,0,width,height)
 
-const nrpixels = 50
+
+
+const nrpixels = 8
 
 class Pixel {
     constructor(x, y, size) {
@@ -30,14 +32,27 @@ for (let i = 0; i < nrpixels; i++) {
     pixels[i] = new Pixel(x, y, pixelSize)
 }
 
-async function updatePixels() {
-    const res = await fetch("http://127.0.0.1:5000/pixels")
-    const palette = await res.json()
-
+const socket = io.connect('http://127.0.0.1:5000');
+socket.on("pixels", (colors) => {
+    updatePixels(colors)
+})
+function updatePixels(colors) {
     for (let i = 0; i < nrpixels; i++) {
-        pixels[i].color = palette[i]
+        pixels[i].color = colors[i]
         pixels[i].draw()
     }
 }
 
-setInterval(updatePixels, 20)
+
+
+// async function updatePixels() {
+//     const res = await fetch("http://127.0.0.1:5000/pixels")
+//     const palette = await res.json()
+// 
+//     for (let i = 0; i < nrpixels; i++) {
+//         pixels[i].color = palette[i]
+//         pixels[i].draw()
+//     }
+// }
+
+setInterval("socket.emit(\"getPixels\")", 50)

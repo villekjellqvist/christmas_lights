@@ -44,7 +44,7 @@ while(True):
         exit()
     timekeeper.wait()
     while np.allclose(SA[0], 0):
-        time.sleep(0.001)
+        time.sleep(0.01)
     for i,p in enumerate(SA[1:]):
         pixels[i] = np.asarray(p,dtype=int)
     SA[0,:] = 0

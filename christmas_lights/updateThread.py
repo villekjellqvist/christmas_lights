@@ -18,6 +18,7 @@ def createSA():
 
 
 class LightsRunner(threading.Thread):
+    settings = {"GPIO_enabled":True}
     def __init__(self):
         super().__init__()
         self.pixelsRGB = []
@@ -33,6 +34,9 @@ class LightsRunner(threading.Thread):
         self.pidFile = DaemonPid(PIDFILE)
         createSA()
 
+    def GPIO_enabled(self):
+        return self.settings["GPIO_enabled"]
+
     def stopped(self) -> bool:
         return self._stop_event.is_set()
 
@@ -41,7 +45,7 @@ class LightsRunner(threading.Thread):
             self.timeKeeper.wait()
             self.scriptImporter.updateFunc()
             self.pixels = self.scriptImporter.patternMaker.pixels
-            sendToGPIO(self.pixels, SA)
+            sendToGPIO(self.pixels, SA, self.GPIO_enabled)
             with self.lock:
                 self.pixelsRGB = rgb(self.pixels)
 

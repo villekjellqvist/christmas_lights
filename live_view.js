@@ -36,23 +36,12 @@ const socket = io.connect('http://127.0.0.1:5000');
 socket.on("pixels", (colors) => {
     updatePixels(colors)
 })
+
 function updatePixels(colors) {
     for (let i = 0; i < nrpixels; i++) {
         pixels[i].color = colors[i]
         pixels[i].draw()
     }
 }
-
-
-
-// async function updatePixels() {
-//     const res = await fetch("http://127.0.0.1:5000/pixels")
-//     const palette = await res.json()
-// 
-//     for (let i = 0; i < nrpixels; i++) {
-//         pixels[i].color = palette[i]
-//         pixels[i].draw()
-//     }
-// }
 
 setInterval("socket.emit(\"getPixels\")", 50)

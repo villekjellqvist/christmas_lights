@@ -7,7 +7,7 @@ import numpy as np
 
 class AbstractPattern:
     def __init__(self, pixels_array):
-        self.pixels = pixels_array
+        self.pixels = np.asarray(pixels_array, dtype=int)
         self.nrpixels = self.pixels.shape[0]
 
     def start(self):
@@ -16,8 +16,12 @@ class AbstractPattern:
     def update(self):
         raise NotImplementedError
 
-    def fade(val:float):
-        self.pixels = self.pixels*val
+    def fade(self,val:float):
+        self.pixels = np.asarray(self.pixels*val, dtype=int)
+
+class zeroPattern(AbstractPattern):
+    def update(self):
+        self.pixels = np.zeros_like(self.pixels)
         
 def rgb(array):
     ret = []
@@ -28,11 +32,19 @@ def rgb(array):
         ret.append(f"rgb({r},{g},{b})")
     return ret
 
-def sendToGPIO(pixels, SA):
+def sendToGPIO(pixels, SA, GPIO_enabled_checker):
+    if not GPIO_enabled_checker():
+        SA[1:] = 0
+        SA[0] = 1
+        return
     while np.allclose(SA[0], 1):
-        time.sleep(0.001)
+        if not GPIO_enabled_checker():
+            SA[1:] = 0
+            SA[0] = 1
+        return
+        time.sleep(1)
     SA[1:] = pixels
-    SA[0,:] = 1
+    SA[0] = 1
     
 class DaemonPid:
     def __init__(self, pidfile):
@@ -75,14 +87,19 @@ class ScriptImporter:
 
     @property
     def currentScriptIndex(self):
-        return self.currentScriptIndex
+        return self._currentScriptIndex
     
     @currentScriptIndex.setter
     def currentScriptIndex(self, value:int):
         if type(value) is not int:
             raise ValueError("currentScriptIndex must be set to int")
-        if value < 0 or value > len(self.scripts):
+        if value > len(self.scripts):
             self._currentScriptIndex = 0
+        elif value < 0:
+            self._currentScriptIndex = -1
+            self.patternMaker = zeroPattern(self.pixels_array)
+            self.updateFunc = self.patternMaker.update
+            return
         else:
             self._currentScriptIndex = value
         self._setCurrentScript(self._currentScriptIndex)
@@ -96,8 +113,8 @@ class ScriptImporter:
                 scripts_in_folder.append(file)
         self.scripts = scripts_in_folder
 
-    def _setCurrentScript(self, script:int):
-        self.currentScript = self.scripts[script]
+    def _setCurrentScript(self, scriptnr:int):
+        self.currentScript = self.scripts[scriptnr]
         scriptpath = os.path.join(self.patternsFolder, self.currentScript)
         scriptmodulepath = scriptpath.replace('/','.').replace('.py','')
         try:
